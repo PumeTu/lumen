@@ -4,12 +4,18 @@ import torch.nn.functional as F
 
 from typing import Union, Optional, Tuple
 
-from padding import pad_same
+from padding import pad_same, get_padding_value
+
+def create_conv2d_pad(in_channels, out_channels, kernel_size, **kwargs):
+    padding = kwargs.pop('padding', '')
+    kwargs.setdefault('bias', False)
+    padding = get_padding_value(padding, kernel_size, **kwargs)
+    return nn.Conv2d(in_channels, out_channels, kernel_size, padding=padding, **kwargs)
 
 def create_conv(in_channels: int, out_channels: int, kernel_size: Union[int, tuple] = 1, **kwargs):
     padding = kwargs['padding']
     if padding == 'same':
-        return
+        return create_conv2d_pad(in_channels, out_channels, kernel_size, **kwargs)
     else:
         return nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, **kwargs)
 
@@ -18,7 +24,7 @@ def get_activation(name: str = "relu", inplace: bool = True):
     Args:
         name (str): name of activation function
         inplace (bool): specify whether to the operation inplace or not
-    Returns
+    Returns:
         module (nn.Module): activation function
     """
     if name == "silu":
@@ -33,12 +39,10 @@ def get_activation(name: str = "relu", inplace: bool = True):
 
 def get_norm_layer(name: str, num_features: int):
     """ Get normalization layer
-    
     Args:
         name (str): name of normalization layer
-        num_feature (int): number of input channels
-
-    return 
+        num_feature (int): number of input channels=
+    Returns:
         module (nn.Module): normalization layer
     """
     if name == "bn2d":
@@ -60,7 +64,7 @@ class ConvBnAct(nn.Module):
                 groups: Optional[int] = 1,
                 bias: Optional[bool] = False,
                 norm_layer: str = 'Batch',
-                activation: str = 'ReLU',
+                activation: str = 'relu',
                 inplace: bool = True):
         super().__init__()
         self.conv = create_conv(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, groups=groups, bias=bias)
@@ -88,7 +92,7 @@ class Conv2dSame(nn.Conv2d):
                 out_channels: int,
                 kernel_size: Union[int, tuple] = 1,
                 stride: Optional[Union[int, tuple]] = 1,
-                padding: Optional[Union[int, tuple, str]] = '',
+                padding: Optional[Union[int, tuple, str]] = 0,
                 dilation: Optional[Union[int, tuple]] = 1,
                 groups: Optional[int] = 1,
                 bias: Optional[bool] = False):
