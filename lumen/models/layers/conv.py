@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from typing import Union, Optional, Tuple
 
-from padding import pad_same, get_padding_value
+from .padding import pad_same, get_padding_value
 
 def create_conv2d_pad(in_channels, out_channels, kernel_size, **kwargs):
     padding = kwargs.pop('padding', '')
@@ -19,7 +19,7 @@ def create_conv(in_channels: int, out_channels: int, kernel_size: Union[int, tup
     else:
         return nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, **kwargs)
 
-def get_activation(name: str = "relu", inplace: bool = True):
+def get_activation(name: str = "relu"):
     """ Get activation function 
     Args:
         name (str): name of activation function
@@ -28,11 +28,11 @@ def get_activation(name: str = "relu", inplace: bool = True):
         module (nn.Module): activation function
     """
     if name == "silu":
-        module = nn.SiLU(inplace=inplace)
+        module = nn.SiLU()
     elif name == "relu":
-        module = nn.ReLU(inplace=inplace)
+        module = nn.ReLU()
     elif name == "lrelu":
-        module = nn.LeakyReLU(0.1, inplace=inplace)
+        module = nn.LeakyReLU(0.1)
     else:
         raise AttributeError(f"Unsupported activation function: {name}")
     return module
@@ -68,8 +68,8 @@ class ConvBnAct(nn.Module):
                 inplace: bool = True):
         super().__init__()
         self.conv = create_conv(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, groups=groups, bias=bias)
-        self.norm = get_norm_layer(norm_layer)
-        self.act = get_activation(activation, inplace)
+        self.norm = get_norm_layer(norm_layer, out_channels)
+        self.act = get_activation(activation)
 
     def forward(self, x):
         return self.act(self.norm(self.conv(x)))
