@@ -75,7 +75,6 @@ class TestDarknet(unittest.TestCase):
         assert out['c5'].shape == (1, 1024, 13, 13)
 
     def test_mnist(self):
-        n_classes = 10
         train_dataloader, test_dataloader = load_dataset(dataset='mnist', transform=True, batch_size=32)
         model = Darknet53(in_channels=1, output=('c5'))
         mlp = nn.Sequential(

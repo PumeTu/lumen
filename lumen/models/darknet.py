@@ -3,7 +3,7 @@ import torch.nn as nn
 
 from typing import List, Tuple
 
-from .layers.conv import ConvBnAct
+from lumen.layers.conv import ConvBnAct
 
 class DarkResidualBlock(nn.Module):
     """Darknet Residual Block
