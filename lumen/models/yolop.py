@@ -26,7 +26,6 @@ class PANet(nn.Module):
         self.bottomup_conv2 = ConvBnAct(in_channels[1], in_channels[1], kernel_size=3, stride=2, activation=activation)
         self.CSP_n4 = CSPLayer(in_channels[1], in_channels[2], n=3, depthwise=depthwise, activation=activation)
 
-
     def forward(self, x):
         inputs = [x[input] for input in self.inputs]
         c3, c4, c5 = inputs
@@ -52,7 +51,6 @@ class PANet(nn.Module):
 
         return (out1, out2, out3)
 
-
 class YOLOv4Head(nn.Module):
     """YOLOv4 Anchor based Head
     """
@@ -68,15 +66,21 @@ class YOLOv4Head(nn.Module):
         self.num_anchors = len(anchors)
         self.num_outputs = 5 + num_classes
         self.num_levels = len(in_channels)
+        self.convs = nn.ModuleList([nn.Conv2d(self.in_channels[i], self.num_anchors * self.num_outputs, 1) for i in range(self.num_levels)])
 
     @staticmethod
-    def _decode_bbox_to_xywh(bbox_pred, anchor):
-        raise NotImplementedError
+    def _decode_bbox(bbox_pred, anchor, w, h):
+        y_center, x_center = torch.meshgrid([torch.arange(h), torch.arange(w)])
+        grid = torch.stack((x_center, y_center), 2).view(1, 1, w, h, 2).float()
+        bbox_pred[..., :2] = 2 * torch.sigmoid(bbox_pred[..., :2]) - 0.5 + grid
+        bbox_pred[..., 2:4] = anchor * (torch.sigmoid(bbox_pred[..., 2:4]) * 2)**2
+        return bbox_pred
 
     def forward(self, x):
         assert len(x) == self.num_levels
+        return multi_apply(self.forward_single, x, self.convs, self.anchors)
 
-    def forward_single(self, x: torch.Tensor, conv: nn.Module):
+    def forward_single(self, x: torch.Tensor, conv: nn.Module, anchor):
         """Forward fetaure of single scale"""
         out = conv(x)
         bs, _, h, w = out.shape
@@ -84,6 +88,10 @@ class YOLOv4Head(nn.Module):
         class_score = out[..., 5:]
         bbox_pred = out[..., :4]
         confidence_score = out[...,4:5]
+
+        class_score = torch.sigmoid(class_score)
+        bbox_pred = self._decode_bbox(bbox_pred, anchor, w, h)
+        confidence_score = torch.sigmoid(confidence_score)
         return class_score, bbox_pred, confidence_score
 
 class YOLOP(nn.Module):
