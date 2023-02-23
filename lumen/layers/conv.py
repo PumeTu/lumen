@@ -59,13 +59,12 @@ class ConvBnAct(nn.Module):
                 out_channels: int,
                 kernel_size: Union[int, tuple] = 1,
                 stride: Optional[Union[int, tuple]] = 1,
-                padding: Optional[Union[int, tuple, str]] = '',
+                padding: Optional[Union[int, tuple, str]] = 'same',
                 dilation: Optional[Union[int, tuple]] = 1,
                 groups: Optional[int] = 1,
                 bias: Optional[bool] = False,
-                norm_layer: str = 'Batch',
-                activation: str = 'relu',
-                inplace: bool = True):
+                norm_layer: str = 'bn2d',
+                activation: str = 'relu'):
         super().__init__()
         self.conv = create_conv(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, groups=groups, bias=bias)
         self.norm = get_norm_layer(norm_layer, out_channels)
@@ -100,3 +99,13 @@ class Conv2dSame(nn.Conv2d):
 
     def forward(self, x):
         return conv2d_same(x, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
+
+class DepthWiseSeperableConv(nn.Module):
+    """Depth Wise Seperable Convolution"""
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: int, stride: Union[int, str] = 'same', norm_layer:str ='bn2d', activation: str = 'silu'):
+        super().__init__()
+        self.depth_conv = ConvBnAct(in_channels, in_channels, kernel_size=kernel_size, stride=stride, norm_layer=norm_layer, activation=activation)
+        self.point_conv = ConvBnAct(in_channels, out_channels, kernel_size=1, stride=1, groups=1, norm_layer=norm_layer, activation=activation)
+    
+    def forward(self, x):
+        return self.point_conv(self.depth_conv(x))

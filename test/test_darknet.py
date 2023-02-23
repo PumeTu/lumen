@@ -7,7 +7,7 @@ import numpy as np
 import gzip
 import os
 from typing import Tuple
-from lumen.models.darknet import Darknet53
+from lumen.models.darknet import Darknet53, CSPDarknet53
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -65,10 +65,11 @@ def test(model, dataloader, lossfn):
         
 class TestDarknet(unittest.TestCase):
     def test_forward(self):
-        model = Darknet53(in_channels=3, output=('c1', 'c2', 'c3', 'c4', 'c5'))
+        model = CSPDarknet53(in_channels=3, output=('c2', 'c3', 'c4', 'c5'))
+        #model = Darknet53(in_channels=3, output=('c1', 'c2', 'c3', 'c4', 'c5'))
         x = torch.randn(1, 3, 416, 416)
         out = model(x)
-        assert out['c1'].shape == (1, 64, 208, 208)
+        #assert out['c1'].shape == (1, 64, 208, 208)
         assert out['c2'].shape == (1, 128, 104, 104)
         assert out['c3'].shape == (1, 256, 52, 52)
         assert out['c4'].shape == (1, 512, 26, 26)
@@ -76,7 +77,8 @@ class TestDarknet(unittest.TestCase):
 
     def test_mnist(self):
         train_dataloader, test_dataloader = load_dataset(dataset='mnist', transform=True, batch_size=32)
-        model = Darknet53(in_channels=1, output=('c5'))
+        #model = Darknet53(in_channels=1, output=('c5'))
+        model = CSPDarknet53(in_channels=1, output=('c5'))
         mlp = nn.Sequential(
             nn.AdaptiveAvgPool2d((1,1)),
             Reshape((-1, 1024)),
@@ -89,9 +91,6 @@ class TestDarknet(unittest.TestCase):
         for epoch in range(1, 2):
             train(model, train_dataloader, optimizer, epoch, lossfn, log_interval=5000)
             test(model, test_dataloader, lossfn)
-
-    def test_cifar10(self):
-        pass
 
 if __name__ == "__main__":
     unittest.main()

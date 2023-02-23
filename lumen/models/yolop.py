@@ -8,15 +8,7 @@ class PaNet(nn.Module):
     """
     def __init__(self):
         super().__init__()
-
-    @staticmethod
-    def _build_bottom_up():
-        raise NotImplementedError
-    
-    @staticmethod
-    def _build_top_down():
-        raise NotImplementedError
-
+        
     def forward(self, x):
         raise NotImplementedError
 
