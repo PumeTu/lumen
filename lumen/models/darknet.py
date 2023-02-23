@@ -4,6 +4,7 @@ import torch.nn as nn
 from typing import List, Tuple
 
 from lumen.layers.conv import ConvBnAct, DepthWiseSeperableConv
+from lumen.layers.pooling import SPPBottleneck
 
 class DarknetBottleneck(nn.Module):
     """Darknet Residual Block
@@ -131,10 +132,17 @@ class CSPDarknet53(nn.Module):
         return Focus(in_channels, base_channels, kernel_size, stride, norm_layer, activation)
 
     def _build_stage_layer(self, in_channels: int, out_channels: int, n: int, depthwise: bool, activation: str = 'silu'):
-        return nn.Sequential(
-            self.conv(in_channels, out_channels, kernel_size=3, stride=2, activation=activation),
-            CSPLayer(out_channels, out_channels, n, depthwise=depthwise, activation=activation)
-        )
+        if 'c5':
+            return nn.Sequential(
+                self.conv(in_channels, out_channels, kernel_size=3, stride=2, activation=activation),
+                CSPLayer(out_channels, out_channels, n, depthwise=depthwise, activation=activation),
+                SPPBottleneck(out_channels, out_channels, activation=activation)
+            )
+        else:
+            return nn.Sequential(
+                self.conv(in_channels, out_channels, kernel_size=3, stride=2, activation=activation),
+                CSPLayer(out_channels, out_channels, n, depthwise=depthwise, activation=activation)
+            )
 
     def forward(self, x):
         outputs = {}
