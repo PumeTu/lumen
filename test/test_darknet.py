@@ -64,33 +64,56 @@ def test(model, dataloader, lossfn):
     print(f'Test Average Loss: {loss:.2f}, Accuracy {correct}/{len(dataloader.dataset)} ({100*correct/len(dataloader.dataset)})')
         
 class TestDarknet(unittest.TestCase):
-    def test_forward(self):
-        model = CSPDarknet53(in_channels=3, output=('c2', 'c3', 'c4', 'c5'))
-        #model = Darknet53(in_channels=3, output=('c1', 'c2', 'c3', 'c4', 'c5'))
+    def test_darknet_forward(self):
+        model = Darknet53(in_channels=3, output=('c1', 'c2', 'c3', 'c4', 'c5'))
         x = torch.randn(1, 3, 416, 416)
         out = model(x)
-        #assert out['c1'].shape == (1, 64, 208, 208)
+        assert out['c1'].shape == (1, 64, 208, 208)
         assert out['c2'].shape == (1, 128, 104, 104)
         assert out['c3'].shape == (1, 256, 52, 52)
         assert out['c4'].shape == (1, 512, 26, 26)
         assert out['c5'].shape == (1, 1024, 13, 13)
 
-    # def test_mnist(self):
-    #     train_dataloader, test_dataloader = load_dataset(dataset='mnist', transform=True, batch_size=32)
-    #     #model = Darknet53(in_channels=1, output=('c5'))
-    #     model = CSPDarknet53(in_channels=1, output=('c5'))
-    #     mlp = nn.Sequential(
-    #         nn.AdaptiveAvgPool2d((1,1)),
-    #         Reshape((-1, 1024)),
-    #         nn.Linear(1024, 10)
-    #     )
-    #     model.c5 = model.c5.append(mlp)
-    #     model.to(device)
-    #     optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
-    #     lossfn = nn.CrossEntropyLoss()
-    #     for epoch in range(1, 2):
-    #         train(model, train_dataloader, optimizer, epoch, lossfn, log_interval=5000)
-    #         test(model, test_dataloader, lossfn)
+    def test_cspdarknet_forward(self):
+        model = CSPDarknet53(in_channels=3, output=('c2', 'c3', 'c4', 'c5'))
+        x = torch.randn(1, 3, 416, 416)
+        out = model(x)
+        assert out['c2'].shape == (1, 128, 104, 104)
+        assert out['c3'].shape == (1, 256, 52, 52)
+        assert out['c4'].shape == (1, 512, 26, 26)
+        assert out['c5'].shape == (1, 1024, 13, 13)
+
+    def test_mnist_darknet(self):
+        train_dataloader, test_dataloader = load_dataset(dataset='mnist', transform=True, batch_size=32)
+        model = Darknet53(in_channels=1, output=('c5'))
+        mlp = nn.Sequential(
+            nn.AdaptiveAvgPool2d((1,1)),
+            Reshape((-1, 1024)),
+            nn.Linear(1024, 10)
+        )
+        model.c5 = model.c5.append(mlp)
+        model.to(device)
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+        lossfn = nn.CrossEntropyLoss()
+        for epoch in range(1, 2):
+            train(model, train_dataloader, optimizer, epoch, lossfn, log_interval=5000)
+            test(model, test_dataloader, lossfn)
+
+    def test_mnist_cspdarknet(self):
+        train_dataloader, test_dataloader = load_dataset(dataset='mnist', transform=True, batch_size=32)
+        model = CSPDarknet53(in_channels=1, output=('c5'))
+        mlp = nn.Sequential(
+            nn.AdaptiveAvgPool2d((1,1)),
+            Reshape((-1, 1024)),
+            nn.Linear(1024, 10)
+        )
+        model.c5 = model.c5.append(mlp)
+        model.to(device)
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+        lossfn = nn.CrossEntropyLoss()
+        for epoch in range(1, 2):
+            train(model, train_dataloader, optimizer, epoch, lossfn, log_interval=5000)
+            test(model, test_dataloader, lossfn)
 
 if __name__ == "__main__":
     unittest.main()
