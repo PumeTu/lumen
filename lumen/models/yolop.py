@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
 
-from typing import List
+from typing import List, Tuple
 
 from lumen.layers.conv import DepthWiseSeperableConv, ConvBnAct
-from .darknet import CSPLayer
+from .darknet import CSPLayer, CSPDarknet53
 from lumen.utils.utils import multi_apply
 
 class PANet(nn.Module):
@@ -73,7 +73,6 @@ class YOLOv4Head(nn.Module):
         anchor = anchor.view(1, na, 1, 1, 2).to(bbox_pred.device)
         y_center, x_center = torch.meshgrid([torch.arange(h), torch.arange(w)], indexing='ij')
         grid = torch.stack((x_center, y_center), 2).view(1, 1, h, w, 2).float().to(bbox_pred.device)
-        print(grid)
         bbox_pred[..., :2] = 2 * torch.sigmoid(bbox_pred[..., :2]) - 0.5 + grid
         bbox_pred[..., 2:4] = anchor * (torch.sigmoid(bbox_pred[..., 2:4]) * 2)**2
         return bbox_pred
@@ -96,14 +95,54 @@ class YOLOv4Head(nn.Module):
         confidence_score = torch.sigmoid(confidence_score)
         return class_score, bbox_pred, confidence_score
 
-class YOLOP(nn.Module):
-    """YOLO for Panoptic Driving Perception
-        Note: 
-            - The original YOLOP utilizes FPN but we will be testing between FPN and PANet to see which provides better accuracy 
-            and see the tradeoffs between accuracy and speed
+class SegmentationHead(nn.Module):
+    """Segmentation Head for both lane lines and drivable areas
+    Note:
+        YOLOP utilizes two segmentation heads one for each, but we will combine them
     """
-    def __init__(self):
+    def __init__(self, in_channels: int, num_classes: int, activation: str = 'silu'):
         super().__init__()
+        self.m = nn.Sequential(
+            ConvBnAct(in_channels, in_channels//2, kernel_size=3, stride=1, activation=activation),
+            nn.Upsample(scale_factor=2, mode='bilinear'),
+            ConvBnAct(in_channels//2, in_channels//4, kernel_size=3, stride=1, activation=activation),
+            nn.Upsample(scale_factor=2, mode='bilinear'),
+            ConvBnAct(in_channels//4,in_channels//8, kernel_size=3, stride=1, activation=activation),
+            nn.Upsample(scale_factor=2, mode='bilinear'), 
+            ConvBnAct(in_channels//8, num_classes, kernel_size=3, stride=1, activation=activation),
+        )
 
     def forward(self, x):
-        raise NotImplementedError   
+        return self.m(x)
+
+class YOLOP(nn.Module):
+    """YOLO for Panoptic Driving Perception
+    Note: 
+        The original YOLOP utilizes FPN but we will be testing between FPN and PANet to see which provides better accuracy 
+        and see the tradeoffs between accuracy and speed
+    Args:
+    """
+    def __init__(self,
+                in_channels: int = 3,
+                width_multiplyer: float = 1.0,
+                depth_multiplyer: float = 1.0,
+                output: tuple = ('c3', 'c4', 'c5'),
+                depthwise: bool = False,
+                activation: str = 'silu',
+                num_det_classes: int = 80,
+                num_seg_classes: int = 10,
+                anchors: List = [[[12, 16], [19, 36], [40, 28]],
+                                [[36, 75], [76, 55], [72, 146]],
+                                [[142, 110], [192, 243], [459, 401]]]):
+        super().__init__()
+        self.backbone = CSPDarknet53(in_channels, width_multiplyer=width_multiplyer, depth_multiplyer=depth_multiplyer, output=output, depthwise=depthwise, activation=activation)
+        self.neck = PANet(inputs=output, depthwise=depthwise, activation=activation)
+        self.detect_head = YOLOv4Head(num_classes=num_det_classes, anchors=anchors)
+        self.segmentation_head = SegmentationHead(in_channels=256, num_classes=num_seg_classes)
+
+    def forward(self, x):
+        x = self.backbone(x)
+        x = self.neck(x)
+        detection = self.detect_head(x)
+        segmentation = self.segmentation_head(x[0])
+        return (detection , segmentation)
