@@ -60,6 +60,6 @@ class TestYOLOP(unittest.TestCase):
         assert confidence_pred[1].shape == (1, 3, 26, 26, 1)
         assert confidence_pred[2].shape == (1, 3, 13, 13, 1) 
         assert segmentation.shape == (1, 10, 416, 416)
-
+        
 if __name__ == '__main__':
     unittest.main()
