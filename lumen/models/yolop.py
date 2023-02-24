@@ -61,16 +61,19 @@ class YOLOv4Head(nn.Module):
                                 [[142, 110], [192, 243], [459, 401]]]):
         super().__init__()
         self.in_channels = in_channels
-        self.anchors = anchors
+        self.anchors = torch.Tensor(anchors)
         self.num_anchors = len(anchors)
         self.num_outputs = 5 + num_classes
         self.num_levels = len(in_channels)
         self.convs = nn.ModuleList([nn.Conv2d(self.in_channels[i], self.num_anchors * self.num_outputs, 1) for i in range(self.num_levels)])
 
     @staticmethod
-    def _decode_bbox(bbox_pred, anchor, w, h):
-        y_center, x_center = torch.meshgrid([torch.arange(h), torch.arange(w)])
-        grid = torch.stack((x_center, y_center), 2).view(1, 1, w, h, 2).float()
+    def _decode_bbox(bbox_pred, anchor):
+        _, na, h, w, _ = bbox_pred.shape
+        anchor = anchor.view(1, na, 1, 1, 2).to(bbox_pred.device)
+        y_center, x_center = torch.meshgrid([torch.arange(h), torch.arange(w)], indexing='ij')
+        grid = torch.stack((x_center, y_center), 2).view(1, 1, h, w, 2).float().to(bbox_pred.device)
+        print(grid)
         bbox_pred[..., :2] = 2 * torch.sigmoid(bbox_pred[..., :2]) - 0.5 + grid
         bbox_pred[..., 2:4] = anchor * (torch.sigmoid(bbox_pred[..., 2:4]) * 2)**2
         return bbox_pred
@@ -89,7 +92,7 @@ class YOLOv4Head(nn.Module):
         confidence_score = out[...,4:5]
 
         class_score = torch.sigmoid(class_score)
-        bbox_pred = self._decode_bbox(bbox_pred, anchor, w, h)
+        bbox_pred = self._decode_bbox(bbox_pred, anchor)
         confidence_score = torch.sigmoid(confidence_score)
         return class_score, bbox_pred, confidence_score
 
