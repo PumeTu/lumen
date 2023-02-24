@@ -15,8 +15,8 @@ class DarknetBottleneck(nn.Module):
         super().__init__()
         self.conv = DepthWiseSeperableConv if depthwise else ConvBnAct
         reduced_channels = in_channels // 2
-        self.conv1 = self.conv(in_channels, reduced_channels, kernel_size=1, stride=1, padding=0, norm_layer='bn2d', activation=activation)
-        self.conv2 = self.conv(reduced_channels, in_channels, kernel_size=3, stride=1, padding='same', norm_layer='bn2d', activation=activation)
+        self.conv1 = self.conv(in_channels, reduced_channels, kernel_size=1, stride=1, norm_layer='bn2d', activation=activation)
+        self.conv2 = self.conv(reduced_channels, in_channels, kernel_size=3, stride=1, norm_layer='bn2d', activation=activation)
 
     def forward(self, x):
         shortcut = x

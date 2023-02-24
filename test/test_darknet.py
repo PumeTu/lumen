@@ -3,9 +3,7 @@ import torch
 import torch.nn as nn
 import torchvision
 import torchvision.transforms as transforms
-import numpy as np
-import gzip
-import os
+import time
 from typing import Tuple
 from lumen.models.darknet import Darknet53, CSPDarknet53
 
@@ -114,6 +112,25 @@ class TestDarknet(unittest.TestCase):
         for epoch in range(1, 2):
             train(model, train_dataloader, optimizer, epoch, lossfn, log_interval=5000)
             test(model, test_dataloader, lossfn)
+    
+    def test_depthwise_speed(self):
+        x = torch.randn(1, 3, 416, 416).to(device)
+        # Depthwise Separable
+        start_time = time.time()
+        dw_model = CSPDarknet53(in_channels=3, depthwise=True, output=('c5')).to(device)
+        dw_out = dw_model(x)
+        dw_time = time.time() - start_time
+        dw_params = sum(p.numel() for p in dw_model.parameters())
+
+        # Normal
+        start_time = time.time()
+        model = Darknet53(in_channels=3, output=('c5')).to(device)
+        out = model(x)
+        n_time = time.time() - start_time
+        n_params = sum(p.numel() for p in model.parameters())
+
+        print(f'dw: {dw_time}, n: {n_time}')
+        print(f'dw params: {dw_params}, n_params: {n_params}')
 
 if __name__ == "__main__":
     unittest.main()
