@@ -20,6 +20,8 @@ def load_dataset(path: str = '/home/pumetu/data/', dataset: str = 'mnist', trans
                 ])
         train_dataset = torchvision.datasets.MNIST(root=path, train=True, download=True, transform=transform)
         test_dataset = torchvision.datasets.MNIST(root=path, train=False, download=True, transform=transform)
+    elif dataset == 'cifar100':
+        pass
 
     train_dataloader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
     test_dataloader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=True)
@@ -37,8 +39,8 @@ def train(model, dataloader, optimizer, epoch, lossfn, log_interval):
     model.train()
     with torch.autograd.set_detect_anomaly(True):
         for batch_idx, (images, labels) in enumerate(dataloader):
-            images, labels = images.to(device), labels.to(device)
-            out = model(images)['c5']
+            images, labels = images.to(device), labels.to(device) 
+            out = model(images)['c5'] 
             loss = lossfn(out, labels)
 
             optimizer.zero_grad()
@@ -56,9 +58,9 @@ def test(model, dataloader, lossfn):
             images, labels = images.to(device), labels.to(device)
             out = model(images)['c5']
             loss = lossfn(out, labels)
-            pred = out.data.max(1, keepdim=True)[1]
+            pred = out.data.max(1, keepdim=True)[1] 
             correct += pred.eq(labels.data.view_as(pred)).sum()
-    loss /= len(dataloader.dataset)
+    loss /= len(dataloader.dataset) 
     print(f'Test Average Loss: {loss:.2f}, Accuracy {correct}/{len(dataloader.dataset)} ({100*correct/len(dataloader.dataset)})')
         
 class TestDarknet(unittest.TestCase):
@@ -83,10 +85,10 @@ class TestDarknet(unittest.TestCase):
 
     def test_mnist_darknet(self):
         train_dataloader, test_dataloader = load_dataset(dataset='mnist', transform=True, batch_size=32)
-        model = Darknet53(in_channels=1, output=('c5'))
+        model = Darknet53(in_channels=1, output=('c5')) 
         mlp = nn.Sequential(
             nn.AdaptiveAvgPool2d((1,1)),
-            Reshape((-1, 1024)),
+            Reshape((-1, 1024)), 
             nn.Linear(1024, 10)
         )
         model.c5 = model.c5.append(mlp)
@@ -95,7 +97,7 @@ class TestDarknet(unittest.TestCase):
         lossfn = nn.CrossEntropyLoss()
         for epoch in range(1, 2):
             train(model, train_dataloader, optimizer, epoch, lossfn, log_interval=5000)
-            test(model, test_dataloader, lossfn)
+            test(model, test_dataloader, lossfn) 
 
     def test_mnist_cspdarknet(self):
         train_dataloader, test_dataloader = load_dataset(dataset='mnist', transform=True, batch_size=32)

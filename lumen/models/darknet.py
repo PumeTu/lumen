@@ -119,7 +119,7 @@ class CSPDarknet53(nn.Module):
         super().__init__()
         self.output = output
         self.conv = DepthWiseSeperableConv if depthwise else ConvBnAct
-        base_channels = int(width_multiplyer * 64)
+        base_channels = int(width_multiplyer*64)
         base_depth = max(round(depth_multiplyer*3), 1)
         self.stem = self._build_stem_layer(in_channels, base_channels)
         self.c2 = self._build_stage_layer(base_channels, base_channels*2, base_depth, depthwise=depthwise, activation=activation)
@@ -128,7 +128,7 @@ class CSPDarknet53(nn.Module):
         self.c5 = self._build_stage_layer(base_channels*8, base_channels*16, base_depth, depthwise=depthwise, activation=activation)
 
     @staticmethod
-    def _build_stem_layer(in_channels, base_channels, kernel_size: int = 3, stride: int = 1, norm_layer: str = 'bn2d', activation: str = 'silu'):
+    def _build_stem_layer(in_channels: int, base_channels: int, kernel_size: int = 3, stride: int = 1, norm_layer: str = 'bn2d', activation: str = 'silu'):
         return Focus(in_channels, base_channels, kernel_size, stride, norm_layer, activation)
 
     def _build_stage_layer(self, in_channels: int, out_channels: int, n: int, depthwise: bool, activation: str = 'silu'):
